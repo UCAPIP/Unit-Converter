@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit Converter</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .converter-card {
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 8px;
+            width: 380px;
+            padding: 24px;
+            box-shadow: 4px 4px 0px #000000;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 0 0 20px 0;
+            font-weight: bold;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+
+        .tab {
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            text-decoration: none;
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+        .tab:hover {
+            color: #000000;
+        }
+
+        .tab.active {
+            color: #3b5998;
+            border-bottom: 3px solid #3b5998;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #000000;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background-color: #ffffff;
+        }
+
+        button {
+            background-color: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .result-container {
+            margin-top: 10px;
+        }
+
+        .result-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .result-value {
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="converter-card">
+        <h1>Unit Converter</h1>
+        
+        <div class="tabs">
+            <span class="tab active" data-url="/api/form/length">Length</span>
+            <span class="tab" data-url="/api/form/weight">Weight</span>
+            <span class="tab" data-url="/api/form/temperature">Temperature</span>
+        </div>
+
+       <div id="input-screen"></div>
+
+        <!-- Экран вывода результата -->
+        <div id="result-screen" class="hidden">
+            <div class="result-container">
+                <div class="result-title">Result of your calculation</div>
+                <div class="result-value" id="resultText">20 ft = 609cm</div>
+                <button id="resetBtn">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+            // 1. Находим неизменяемые элементы страницы
+        const inputScreen = document.getElementById('input-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultText = document.getElementById('resultText');
+        const tabs = document.querySelectorAll('.tab');
+
+        // 2. Функция загрузки HTML-фрагментов для табов с бэкенда
+        function loadForm(url) {
+            fetch(url)
+                .then(response => response.text())
+                .then(htmlChunk => {
+                    inputScreen.innerHTML = htmlChunk; // Вставили форму от Go
+                    initSubmitButton();                // Оживили динамическую кнопку Convert
+                })
+                .catch(err => console.error("Ошибка загрузки формы:", err));
+        }
+
+        // 3. Функция отправки данных на бэкенд для расчета
+        function initSubmitButton() {
+            const convertBtn = document.getElementById('convertBtn');
+            if (!convertBtn) return;
+
+            convertBtn.addEventListener('click', () => {
+                // Собираем значения из динамических инпутов
+                const value = document.getElementById('inputValue').value;
+                const from = document.getElementById('unitFrom').value;
+                const to = document.getElementById('unitTo').value;
+
+                // Отправляем POST запрос на бэкенд для вычисления
+                fetch('/api/convert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ value: parseFloat(value) || 0, from: from, to: to })
+                })
+                .then(response => response.json()) // Ожидаем JSON вида { "result": "20 ft = 609 cm" }
+                .then(data => {
+                    // Выводим готовый ответ от бэкенда на экран
+                    resultText.textContent = data.result;
+                    
+                    inputScreen.classList.add('hidden');
+                    resultScreen.classList.remove('hidden');
+                })
+                .catch(err => console.error("Ошибка расчета на бэкенде:", err));
+            });
+        }
+
+        // 4. Переключение табов
+        tabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                tabs.forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Сбрасываем экраны при переключении таба
+                inputScreen.classList.remove('hidden');
+                resultScreen.classList.add('hidden');
+
+                const targetUrl = e.target.getAttribute('data-url');
+                loadForm(targetUrl); 
+            });
+        });
+
+        // 5. Логика кнопки Reset
+        resetBtn.addEventListener('click', () => {
+            inputScreen.classList.remove('hidden');
+            resultScreen.classList.add('hidden');
+        });
+
+        // 6. Первоначальная загрузка
+        loadForm('/api/form/length');
+    </script>
+</body>
+</html>
