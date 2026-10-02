@@ -7,6 +7,29 @@ import (
 	"strings"
 )
 
+// Отдает главную страницу (где находятся табы)
+func handlerMain(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "index.html")
+}
+
+// Отдает только фрагмент формы для длины
+func handlerLength(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, "length-form.html")
+}
+
+// Отдает только фрагмент формы для веса
+func handlerWeight(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, "weight-form.html")
+}
+
+// Отдает только фрагмент формы для температуры
+func handlerTemperature(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, "temperature-form.html")
+}
+
 type ConvertRequest struct {
 	Value float64 `json:"value"`
 	From  string  `json:"from"`
@@ -33,7 +56,10 @@ func handlerConvert(w http.ResponseWriter, r *http.Request) {
 
 	finalResult, err := convertLength(req.Value, req.From, req.To)
 
-	responseText := fmt.Sprintf("%.2f %s = %.2f %s", req.Value, req.From, finalResult, req.To)
+	strResponse := formatFloat(finalResult)
+	strRequest := formatFloat(req.Value)
+
+	responseText := fmt.Sprintf("%s %s = %s %s", strRequest, req.From, strResponse, req.To)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -41,27 +67,10 @@ func handlerConvert(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// Отдает главную страницу (где находятся табы)
-func handlerMain(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "index.html")
-}
-
-// Отдает только фрагмент формы для длины
-func handlerLength(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	http.ServeFile(w, r, "length-form.html")
-}
-
-// Отдает только фрагмент формы для веса
-func handlerWeight(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	http.ServeFile(w, r, "weight-form.html")
-}
-
-// Отдает только фрагмент формы для температуры
-func handlerTemperature(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	http.ServeFile(w, r, "temperature-form.html")
+func formatFloat(val float64) string {
+	str := fmt.Sprintf("%.8f", val)
+	str = strings.TrimRight(str, "0")
+	return strings.TrimRight(str, ".")
 }
 
 // Коэффициенты перевода (сколько метров в одной единице)
@@ -87,7 +96,6 @@ var ratesLength = map[string]float64{
 }
 
 func convertLength(value float64, from, to string) (float64, error) {
-	// Приводим к нижнему регистру, чтобы не зависеть от шрифта (Mile, MILE, mile)
 	fromKey := strings.ToLower(strings.TrimSpace(from))
 	toKey := strings.ToLower(strings.TrimSpace(to))
 
