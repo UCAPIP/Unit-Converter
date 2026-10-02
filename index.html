@@ -126,25 +126,26 @@
             <span class="tab" data-url="/api/form/temperature">Temperature</span>
         </div>
 
-       <div id="input-screen"></div>
-
+       <div id="input-screen">
+            
+       </div>
         <!-- Экран вывода результата -->
         <div id="result-screen" class="hidden">
             <div class="result-container">
                 <div class="result-title">Result of your calculation</div>
-                <div class="result-value" id="resultText">20 ft = 609cm</div>
+                <div class="result-value" id="resultText"></div>
                 <button id="resetBtn">Reset</button>
             </div>
         </div>
     </div>
 
     <script>
-            // 1. Находим неизменяемые элементы страницы
+        // 1. Находим неизменяемые элементы страницы
         const inputScreen = document.getElementById('input-screen');
         const resultScreen = document.getElementById('result-screen');
-        const resetBtn = document.getElementById('resetBtn');
-        const resultText = document.getElementById('resultText');
         const tabs = document.querySelectorAll('.tab');
+        const resultText = document.getElementById('resultText');
+        const resetBtn = document.getElementById('resetBtn');
 
         // 2. Функция загрузки HTML-фрагментов для табов с бэкенда
         function loadForm(url) {
