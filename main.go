@@ -54,7 +54,18 @@ func handlerConvert(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	finalResult, err := convertLength(req.Value, req.From, req.To)
+	var finalResult float64
+
+	if _, isLength := ratesLength[req.From]; isLength {
+		finalResult, err = convert(req.Value, req.From, req.To, ratesLength)
+
+	} else if _, isWeight := ratesWeight[req.From]; isWeight {
+		finalResult, err = convert(req.Value, req.From, req.To, ratesWeight)
+
+	} else {
+		http.Error(w, "Неизвестная единица измерения", http.StatusBadRequest)
+		return
+	}
 
 	strResponse := formatFloat(finalResult)
 	strRequest := formatFloat(req.Value)
@@ -95,17 +106,37 @@ var ratesLength = map[string]float64{
 	"mile": 1609.344,
 }
 
-func convertLength(value float64, from, to string) (float64, error) {
-	fromKey := strings.ToLower(strings.TrimSpace(from))
-	toKey := strings.ToLower(strings.TrimSpace(to))
+// Коэффициенты перевода (сколько грамм в одной единице)
+var ratesWeight = map[string]float64{
+	// Метрическая система
+	"mg":        0.001,
+	"milligram": 0.001,
+	"g":         1.0,
+	"gram":      1.0,
+	"kg":        1000.0,
+	"kilogram":  1000.0,
+	// Имперская система
+	"oz":    28.349523125,
+	"ounce": 28.349523125,
+	"lb":    453.59237,
+	"pound": 453.59237,
+}
 
-	fromRate, ok1 := ratesLength[fromKey]
-	toRate, ok2 := ratesLength[toKey]
+func convert(value float64, from string, to string, rates map[string]float64) (float64, error) {
+	fromRate, okFrom := rates[from]
+	toRate, okTo := rates[to]
 
-	if !ok1 || !ok2 {
-		return 0, fmt.Errorf("неверная единица измерения: %s или %s", from, to)
+	if !okFrom || !okTo {
+		return 0, fmt.Errorf("неизвестная единица измерения")
 	}
-	return (value * fromRate) / toRate, nil
+
+	// 1. Переводим в базовую единицу (метры или граммы)
+	baseValue := value * fromRate
+
+	// 2. Переводим из базовой единицы в целевую
+	result := baseValue / toRate
+
+	return result, nil
 }
 
 func main() {
